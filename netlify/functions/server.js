@@ -100,7 +100,7 @@ export const handler = async (event, context) => {
                 data: { 
                   temperature: parseFloat(temp) || 0,
                   humidity: parseFloat(hum) || 0,
-                  pressure: null,
+                  pressure: 0, // Default value instead of null
                   gas_resistance: parseFloat(nh3) || 0,
                   ammonia: parseFloat(nh3) || 0,
                   pm1: parseInt(pm1) || 0,
