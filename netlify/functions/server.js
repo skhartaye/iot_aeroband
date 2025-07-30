@@ -93,14 +93,14 @@ export const handler = async (event, context) => {
             const { temp, hum, pm1, pm25, pm10, nh3, deviceId = 'ESP32_Sensor' } = requestBody;
             const sensorData = await prisma.sensorData.create({
               data: { 
-                temperature: temp,
-                humidity: hum,
+                temperature: parseFloat(temp) || 0,
+                humidity: parseFloat(hum) || 0,
                 pressure: null,
-                gas_resistance: nh3,
-                ammonia: nh3,
-                pm1: pm1,
-                pm25: pm25,
-                pm10: pm10,
+                gas_resistance: parseFloat(nh3) || 0,
+                ammonia: parseFloat(nh3) || 0,
+                pm1: parseInt(pm1) || 0,
+                pm25: parseInt(pm25) || 0,
+                pm10: parseInt(pm10) || 0,
                 deviceId: deviceId,
                 location: 'Default',
                 status: 'active'
