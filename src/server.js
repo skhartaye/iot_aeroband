@@ -8,10 +8,10 @@ app.use(express.json());
 
 // POST endpoint to receive sensor data
 app.post('/sensor-data', async (req, res) => {
-  const { value, type, unit, deviceId, location, status } = req.body;
+  const { temperature, humidity, pressure, gas_resistance, ammonia, pm1_0, pm2_5, pm10, deviceId, location, status } = req.body;
   try {
     const sensorData = await prisma.sensorData.create({
-      data: { value, type, unit, deviceId, location, status }
+      data: { temperature, humidity, pressure, gas_resistance, ammonia, pm1_0, pm2_5, pm10, deviceId, location, status }
     });
     res.status(201).json(sensorData);
   } catch (error) {
@@ -29,7 +29,13 @@ app.get('/', (req, res) => {
   res.send('API is running!');
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); 
+// For Vercel deployment
+export default app;
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+} 

@@ -48,8 +48,8 @@ function App() {
   }, [theme]);
 
   // BLE UUIDs
-  const SERVICE_UUID = '19b10000-e8f2-537e-4f6c-d104768a1214';
-  const CHARACTERISTIC_UUID = '19b10001-e8f2-537e-4f6c-d104768a1214';
+  const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+  const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 
   const handleConnect = async () => {
     setError('');
@@ -75,24 +75,34 @@ function App() {
         }
         try {
           const dataObj = JSON.parse(jsonStr);
+          console.log('Received BLE data:', dataObj);
+          
           setData(prev => {
+            // Extract values from the new enhanced format
+            const temp = dataObj.temperature?.value || dataObj.temperature || dataObj.t;
+            const humid = dataObj.humidity?.value || dataObj.humidity || dataObj.h;
+            const pressure = dataObj.pressure?.value || dataObj.pressure || dataObj.p;
+            const pm25 = dataObj.pm2_5?.value || dataObj.pm2_5 || dataObj.q;
+            const gasResistance = dataObj.gas_resistance?.value || dataObj.gas_resistance || dataObj.a;
+            
             // Update history for each metric
             setHistory(h => ({
-              humid: updateHistory(h.humid, dataObj.h),
-              temp: updateHistory(h.temp, dataObj.t),
-              pressure: updateHistory(h.pressure, dataObj.p),
-              pm25: updateHistory(h.pm25, dataObj.q),
-              gasResistance: updateHistory(h.gasResistance, dataObj.a),
+              humid: updateHistory(h.humid, humid),
+              temp: updateHistory(h.temp, temp),
+              pressure: updateHistory(h.pressure, pressure),
+              pm25: updateHistory(h.pm25, pm25),
+              gasResistance: updateHistory(h.gasResistance, gasResistance),
             }));
             return {
-              temp: dataObj.t,
-              humid: dataObj.h,
-              pressure: dataObj.p,
-              pm25: dataObj.q,
-              gasResistance: dataObj.a,
+              temp: temp,
+              humid: humid,
+              pressure: pressure,
+              pm25: pm25,
+              gasResistance: gasResistance,
             };
           });
         } catch (e) {
+          console.error('Failed to parse sensor data:', e);
           setError('Failed to parse sensor data');
         }
       });

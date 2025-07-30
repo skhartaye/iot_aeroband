@@ -8,12 +8,17 @@ datasource db {
 }
 
 model SensorData {
-  id        Int      @id @default(autoincrement())
-  value     Float
-  timestamp DateTime @default(now())
-  deviceId  String
-  location  String?
-  status    String?
-  type      String
-  unit      String
+  id            Int      @id @default(autoincrement())
+  temperature   Float    @default(0)
+  humidity      Float    @default(0)
+  pressure      Float    @default(0)
+  gas_resistance Float   @default(0)
+  ammonia       Float    @default(0)
+  pm1_0         Int      @default(0)
+  pm2_5         Int      @default(0)
+  pm10          Int      @default(0)
+  deviceId      String?
+  location      String?
+  status        String?
+  timestamp     DateTime @default(now())
 }
