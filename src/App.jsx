@@ -78,27 +78,39 @@ function App() {
           console.log('Received BLE data:', dataObj);
           
           setData(prev => {
-            // Extract values from the new enhanced format
-            const temp = dataObj.temperature?.value || dataObj.temperature || dataObj.t;
-            const humid = dataObj.humidity?.value || dataObj.humidity || dataObj.h;
-            const pressure = dataObj.pressure?.value || dataObj.pressure || dataObj.p;
-            const pm25 = dataObj.pm25?.value || dataObj.pm25 || dataObj.q;
-            const gasResistance = dataObj.gas_resistance?.value || dataObj.gas_resistance || dataObj.a;
+            // Extract values from the ESP32 format: {"temp":22.8,"hum":40.7,"pm1":21,"pm25":19,"pm10":31,"nh3":913.08}
+            const temp = dataObj.temp;
+            const humid = dataObj.hum;
+            const pm1 = dataObj.pm1;
+            const pm25 = dataObj.pm25;
+            const pm10 = dataObj.pm10;
+            const nh3 = dataObj.nh3;
             
             // Update history for each metric
             setHistory(h => ({
               humid: updateHistory(h.humid, humid),
               temp: updateHistory(h.temp, temp),
-              pressure: updateHistory(h.pressure, pressure),
+              pressure: updateHistory(h.pressure, null), // Not in current format
               pm25: updateHistory(h.pm25, pm25),
-              gasResistance: updateHistory(h.gasResistance, gasResistance),
+              gasResistance: updateHistory(h.gasResistance, nh3), // Using nh3 as gas resistance
             }));
+            
+            // Send data to API
+            sendToAPI({
+              temp: temp,
+              hum: humid,
+              pm1: pm1,
+              pm25: pm25,
+              pm10: pm10,
+              nh3: nh3
+            });
+            
             return {
               temp: temp,
               humid: humid,
-              pressure: pressure,
+              pressure: null, // Not available in current format
               pm25: pm25,
-              gasResistance: gasResistance,
+              gasResistance: nh3, // Using nh3 as gas resistance
             };
           });
         } catch (e) {
@@ -130,13 +142,33 @@ function App() {
     return newArr;
   }
 
+  // Function to send data to API
+  const sendToAPI = async (sensorData) => {
+    try {
+      const response = await fetch('/api/sensor-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sensorData),
+      });
+      
+      if (response.ok) {
+        console.log('Data sent to API successfully');
+      } else {
+        console.error('Failed to send data to API:', response.status);
+      }
+    } catch (error) {
+      console.error('Error sending data to API:', error);
+    }
+  };
+
   // Card data array for easier mapping
   const cards = [
     { key: 'humid', label: 'Humidity', value: data.humid, unit: '%', icon: CloudIcon, color: 'from-blue-200 to-blue-100' },
     { key: 'temp', label: 'Temperature', value: data.temp, unit: '°C', icon: SunIcon, color: 'from-red-200 to-red-100' },
-    { key: 'pressure', label: 'Pressure', value: data.pressure, unit: 'hPa', icon: ArrowTrendingUpIcon, color: 'from-green-200 to-green-100' },
     { key: 'pm25', label: 'PM 2.5', value: data.pm25, unit: 'µg/m³', icon: SparklesIcon, color: 'from-yellow-200 to-yellow-100' },
-    { key: 'gasResistance', label: 'Gas Resistance', value: data.gasResistance, unit: 'Ω', icon: FireIcon, color: 'from-purple-200 to-purple-100' },
+    { key: 'gasResistance', label: 'NH3 (Ammonia)', value: data.gasResistance, unit: 'ppm', icon: FireIcon, color: 'from-purple-200 to-purple-100' },
   ];
 
   return (
