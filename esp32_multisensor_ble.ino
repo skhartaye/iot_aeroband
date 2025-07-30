@@ -126,6 +126,8 @@ void loop() {
         // Read sensor data with new format
         float temp = 22.5 + random(-25, 25) / 10.0;
         float hum = 40.0 + random(-20, 20) / 10.0;
+        float pressure = 1005.0 + random(-50, 50) / 10.0;  // hPa
+        float gas_resistance = 30.0 + random(-10, 10) / 10.0;  // kΩ
         int pm1 = random(0, 30);
         int pm25 = random(5, 60);
         int pm10 = random(10, 80);
