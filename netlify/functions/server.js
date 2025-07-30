@@ -1,6 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+let prisma;
+
+try {
+  prisma = new PrismaClient();
+} catch (error) {
+  console.error('Failed to initialize Prisma:', error);
+  prisma = null;
+}
 
 // Netlify function handler - Updated to remove Express dependency
 export const handler = async (event, context) => {
@@ -17,6 +24,15 @@ export const handler = async (event, context) => {
       statusCode: 200,
       headers,
       body: ''
+    };
+  }
+
+  // Check if Prisma is available
+  if (!prisma) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Database connection not available' })
     };
   }
 
