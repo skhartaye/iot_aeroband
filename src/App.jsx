@@ -48,8 +48,8 @@ function App() {
   }, [theme]);
 
   // BLE UUIDs
-  const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-  const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+  const SERVICE_UUID = '19B10000-E8F2-537E-4F6C-D104768A1214';
+  const CHARACTERISTIC_UUID = '19B10001-E8F2-537E-4F6C-D104768A1214';
 
   const handleConnect = async () => {
     setError('');
