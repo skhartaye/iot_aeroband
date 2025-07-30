@@ -37,27 +37,25 @@ export default function Trial() {
       const data = JSON.parse(str);
       console.log('Parsed sensor data:', data);
       
-      // Map the enhanced sensor data format
+      // Map the simple sensor data format
       const sensorData = {
-        temperature: data.temperature?.value || data.temperature || 0,
-        humidity: data.humidity?.value || data.humidity || 0,
-        pressure: data.pressure?.value || data.pressure || 0,
-        gas_resistance: data.gas_resistance?.value || data.gas_resistance || 0,
-        ammonia: data.ammonia?.value || data.ammonia || 0,
-        pm1: data.pm1?.value || data.pm1 || 0,
-        pm25: data.pm25?.value || data.pm25 || 0,
-        pm10: data.pm10?.value || data.pm10 || 0,
+        temperature: data.temp || 0,
+        humidity: data.hum || 0,
+        pressure: 0, // Not included in new format
+        gas_resistance: 0, // Not included in new format
+        ammonia: data.nh3 || 0,
+        pm1: data.pm1 || 0,
+        pm25: data.pm25 || 0,
+        pm10: data.pm10 || 0,
         deviceId: 'AerobandSensor',
         location: 'lab',
         status: 'ok'
       };
       
-      // Log the enhanced data for debugging
-      console.log('Temperature:', data.temperature);
-      console.log('Humidity:', data.humidity);
-      console.log('Pressure:', data.pressure);
-      console.log('Gas Resistance:', data.gas_resistance);
-      console.log('Ammonia:', data.ammonia);
+      // Log the simple data for debugging
+      console.log('Temperature:', data.temp);
+      console.log('Humidity:', data.hum);
+      console.log('Ammonia:', data.nh3);
       console.log('PM1:', data.pm1);
       console.log('PM25:', data.pm25);
       console.log('PM10:', data.pm10);

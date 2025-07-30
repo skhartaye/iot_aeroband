@@ -78,12 +78,12 @@ function App() {
           console.log('Received BLE data:', dataObj);
           
           setData(prev => {
-            // Extract values from the new enhanced format
-            const temp = dataObj.temperature?.value || dataObj.temperature || dataObj.t;
-            const humid = dataObj.humidity?.value || dataObj.humidity || dataObj.h;
-            const pressure = dataObj.pressure?.value || dataObj.pressure || dataObj.p;
-            const pm25 = dataObj.pm25?.value || dataObj.pm25 || dataObj.q;
-            const gasResistance = dataObj.gas_resistance?.value || dataObj.gas_resistance || dataObj.a;
+            // Extract values from the simple format
+            const temp = dataObj.temp || dataObj.t;
+            const humid = dataObj.hum || dataObj.h;
+            const pressure = dataObj.pressure || dataObj.p || 0;
+            const pm25 = dataObj.pm25 || dataObj.q || 0;
+            const gasResistance = dataObj.gas_resistance || dataObj.a || 0;
             
             // Update history for each metric
             setHistory(h => ({
