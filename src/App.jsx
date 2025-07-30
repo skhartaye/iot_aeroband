@@ -145,7 +145,7 @@ function App() {
   // Function to send data to API
   const sendToAPI = async (sensorData) => {
     try {
-      const response = await fetch('/api/sensor-data', {
+      const response = await fetch('https://iot.aeroband.org/api/sensor-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
