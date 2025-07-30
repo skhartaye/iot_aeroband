@@ -1,0 +1,5 @@
+# API routes
+/api/*  /.netlify/functions/server  200
+
+# SPA routing - redirect all other routes to index.html
+/*    /index.html   200 

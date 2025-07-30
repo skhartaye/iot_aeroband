@@ -46,9 +46,9 @@ app.post('/sensor-data', async (req, res) => {
       data: { 
         temperature: temp,
         humidity: hum,
-        pressure: null, // Not available in current format
-        gas_resistance: nh3, // Using nh3 as gas resistance
-        ammonia: nh3, // Also store as ammonia
+        pressure: null,
+        gas_resistance: nh3,
+        ammonia: nh3,
         pm1: pm1,
         pm25: pm25,
         pm10: pm10,
@@ -95,7 +95,7 @@ app.get('/sensor-data/:deviceId', async (req, res) => {
         timestamp: 'desc'
       }
     });
-  res.json(data);
+    res.json(data);
   } catch (error) {
     console.error('Error fetching sensor data for device:', error);
     res.status(500).json({ error: error.message });
@@ -106,13 +106,77 @@ app.get('/', (req, res) => {
   res.send('API is running!');
 });
 
-// For Vercel deployment
-export default app;
+// Netlify function handler
+export const handler = async (event, context) => {
+  // Handle CORS
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+  };
 
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-} 
+  // Handle preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
+  // Convert Netlify event to Express request
+  const { httpMethod, path, queryStringParameters, body } = event;
+  
+  // Mock Express request/response
+  const req = {
+    method: httpMethod,
+    url: path,
+    query: queryStringParameters || {},
+    body: body ? JSON.parse(body) : {}
+  };
+
+  const res = {
+    statusCode: 200,
+    headers: {},
+    json: (data) => ({ ...res, body: JSON.stringify(data) }),
+    status: (code) => ({ ...res, statusCode: code }),
+    send: (data) => ({ ...res, body: data })
+  };
+
+  // Route the request
+  const pathSegments = path.split('/').filter(Boolean);
+  if (pathSegments[0] === 'api') {
+    const apiPath = '/' + pathSegments.slice(1).join('/');
+    
+    switch (apiPath) {
+      case '/':
+        return res.send('API is running!');
+      case '/devices':
+        if (httpMethod === 'GET') {
+          return await app.get('/devices')(req, res);
+        } else if (httpMethod === 'POST') {
+          return await app.post('/devices')(req, res);
+        }
+        break;
+      case '/sensor-data':
+        if (httpMethod === 'GET') {
+          return await app.get('/sensor-data')(req, res);
+        } else if (httpMethod === 'POST') {
+          return await app.post('/sensor-data')(req, res);
+        }
+        break;
+      default:
+        if (apiPath.startsWith('/sensor-data/')) {
+          const deviceId = pathSegments[2];
+          req.params = { deviceId };
+          return await app.get('/sensor-data/:deviceId')(req, res);
+        }
+    }
+  }
+
+  return {
+    statusCode: 404,
+    headers,
+    body: 'Not Found'
+  };
+}; 
