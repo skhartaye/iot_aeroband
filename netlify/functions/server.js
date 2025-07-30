@@ -90,27 +90,43 @@ export const handler = async (event, context) => {
               body: JSON.stringify(data)
             };
           } else if (httpMethod === 'POST') {
-            const { temp, hum, pm1, pm25, pm10, nh3, deviceId = 'ESP32_Sensor' } = requestBody;
-            const sensorData = await prisma.sensorData.create({
-              data: { 
-                temperature: parseFloat(temp) || 0,
-                humidity: parseFloat(hum) || 0,
-                pressure: null,
-                gas_resistance: parseFloat(nh3) || 0,
-                ammonia: parseFloat(nh3) || 0,
-                pm1: parseInt(pm1) || 0,
-                pm25: parseInt(pm25) || 0,
-                pm10: parseInt(pm10) || 0,
-                deviceId: deviceId,
-                location: 'Default',
-                status: 'active'
-              }
-            });
-            return {
-              statusCode: 201,
-              headers,
-              body: JSON.stringify(sensorData)
-            };
+            try {
+              console.log('Received sensor data:', requestBody);
+              const { temp, hum, pm1, pm25, pm10, nh3, deviceId = 'ESP32_Sensor' } = requestBody;
+              
+              console.log('Parsed values:', { temp, hum, pm1, pm25, pm10, nh3, deviceId });
+              
+              const sensorData = await prisma.sensorData.create({
+                data: { 
+                  temperature: parseFloat(temp) || 0,
+                  humidity: parseFloat(hum) || 0,
+                  pressure: null,
+                  gas_resistance: parseFloat(nh3) || 0,
+                  ammonia: parseFloat(nh3) || 0,
+                  pm1: parseInt(pm1) || 0,
+                  pm25: parseInt(pm25) || 0,
+                  pm10: parseInt(pm10) || 0,
+                  deviceId: deviceId,
+                  location: 'Default',
+                  status: 'active'
+                }
+              });
+              
+              console.log('Sensor data saved successfully:', sensorData);
+              
+              return {
+                statusCode: 201,
+                headers,
+                body: JSON.stringify(sensorData)
+              };
+            } catch (error) {
+              console.error('Error saving sensor data:', error);
+              return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ error: error.message, details: error.stack })
+              };
+            }
           }
           break;
           
