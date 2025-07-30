@@ -82,7 +82,7 @@ function App() {
             const temp = dataObj.temperature?.value || dataObj.temperature || dataObj.t;
             const humid = dataObj.humidity?.value || dataObj.humidity || dataObj.h;
             const pressure = dataObj.pressure?.value || dataObj.pressure || dataObj.p;
-            const pm25 = dataObj.pm2_5?.value || dataObj.pm2_5 || dataObj.q;
+            const pm25 = dataObj.pm25?.value || dataObj.pm25 || dataObj.q;
             const gasResistance = dataObj.gas_resistance?.value || dataObj.gas_resistance || dataObj.a;
             
             // Update history for each metric

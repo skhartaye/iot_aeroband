@@ -14,8 +14,8 @@ model SensorData {
   pressure      Float    @default(0)
   gas_resistance Float   @default(0)
   ammonia       Float    @default(0)
-  pm1_0         Int      @default(0)
-  pm2_5         Int      @default(0)
+  pm1           Int      @default(0)
+  pm25          Int      @default(0)
   pm10          Int      @default(0)
   deviceId      String?
   location      String?

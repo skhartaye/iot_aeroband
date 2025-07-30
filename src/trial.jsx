@@ -44,8 +44,8 @@ export default function Trial() {
         pressure: data.pressure?.value || data.pressure || 0,
         gas_resistance: data.gas_resistance?.value || data.gas_resistance || 0,
         ammonia: data.ammonia?.value || data.ammonia || 0,
-        pm1_0: data.pm1_0?.value || data.pm1_0 || 0,
-        pm2_5: data.pm2_5?.value || data.pm2_5 || 0,
+        pm1: data.pm1?.value || data.pm1 || 0,
+        pm25: data.pm25?.value || data.pm25 || 0,
         pm10: data.pm10?.value || data.pm10 || 0,
         deviceId: 'AerobandSensor',
         location: 'lab',
@@ -58,8 +58,8 @@ export default function Trial() {
       console.log('Pressure:', data.pressure);
       console.log('Gas Resistance:', data.gas_resistance);
       console.log('Ammonia:', data.ammonia);
-      console.log('PM1.0:', data.pm1_0);
-      console.log('PM2.5:', data.pm2_5);
+      console.log('PM1:', data.pm1);
+      console.log('PM25:', data.pm25);
       console.log('PM10:', data.pm10);
 
                         fetch(API_ENDPOINTS.SENSOR_DATA, {

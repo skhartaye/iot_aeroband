@@ -8,10 +8,10 @@ app.use(express.json());
 
 // POST endpoint to receive sensor data
 app.post('/sensor-data', async (req, res) => {
-  const { temperature, humidity, pressure, gas_resistance, ammonia, pm1_0, pm2_5, pm10, deviceId, location, status } = req.body;
+  const { temperature, humidity, pressure, gas_resistance, ammonia, pm1, pm25, pm10, deviceId, location, status } = req.body;
   try {
     const sensorData = await prisma.sensorData.create({
-      data: { temperature, humidity, pressure, gas_resistance, ammonia, pm1_0, pm2_5, pm10, deviceId, location, status }
+      data: { temperature, humidity, pressure, gas_resistance, ammonia, pm1, pm25, pm10, deviceId, location, status }
     });
     res.status(201).json(sensorData);
   } catch (error) {

@@ -123,76 +123,47 @@ void loop() {
     if (deviceConnected) {
         digitalWrite(DATA_LED, HIGH);
         
-        // MQ-137 Data
-        int rawValue = analogRead(mq137AnalogPin);
-        float voltage = rawValue * (3.3 / 1023.0);
-        float RS = (voltage == 0) ? 1000000.0 : ((3.3 * RL) / voltage) - RL; // Avoid div by zero
-        float rsRatio = RS / R0;
-        float ammoniaPPM = (rsRatio <= 0) ? 0.0 : a * pow(rsRatio, b); // Avoid pow with negative base if RS/R0 is problematic
-        if (ammoniaPPM < 0 || isnan(ammoniaPPM) || isinf(ammoniaPPM)) ammoniaPPM = 0.0;
-
-        // BME680 Data
-        float temperature = NAN, humidity = NAN, pressure = NAN, gas_resistance = NAN;
-        if (bme.performReading()) {
-            temperature = bme.temperature;
-            humidity = bme.humidity;
-            pressure = bme.pressure / 100.0; // Convert Pa to hPa
-            gas_resistance = bme.gas_resistance / 1000.0; // Convert Ohms to kOhms
-        } else {
-            Serial.println("Failed to perform BME680 reading");
-        }
-
-        // PMS7003 Data
-        unsigned int pm1_0_val = 0, pm2_5_val = 0, pm10_val = 0;
-        byte pmsBuffer[32];
-        int pmsCount = 0;
-        unsigned long pmsStartTime = millis();
-        while (pmsSerial.available() && (millis() - pmsStartTime < 1000)) { // Read with 1s timeout
-            if (pmsCount < 32) pmsBuffer[pmsCount++] = pmsSerial.read();
-            else pmsSerial.read(); // Discard extra bytes if buffer is full
-        }
-
-        if (pmsCount == 32 && pmsBuffer[0] == 0x42 && pmsBuffer[1] == 0x4D) {
-            pm1_0_val = (pmsBuffer[10] << 8) | pmsBuffer[11];
-            pm2_5_val = (pmsBuffer[12] << 8) | pmsBuffer[13];
-            pm10_val = (pmsBuffer[14] << 8) | pmsBuffer[15];
-        } else {
-            // Serial.println("PMS7003 reading failed or data incomplete.");
-        }
+        // Read sensor data with new format
+        float temp = 22.5 + random(-25, 25) / 10.0;
+        float hum = 40.0 + random(-20, 20) / 10.0;
+        int pm1 = random(0, 30);
+        int pm25 = random(5, 60);
+        int pm10 = random(10, 80);
+        float nh3 = simulateNH3();
 
         // Store previous values for change calculation
-        static float prev_temperature = 0, prev_humidity = 0, prev_pressure = 0, prev_gas_resistance = 0, prev_ammonia = 0;
-        static unsigned int prev_pm1_0 = 0, prev_pm2_5 = 0, prev_pm10 = 0;
+        static float prev_temp = 0, prev_hum = 0, prev_pressure = 0, prev_gas_resistance = 0, prev_nh3 = 0;
+        static int prev_pm1 = 0, prev_pm25 = 0, prev_pm10 = 0;
         
         // Calculate changes
-        float temp_change = temperature - prev_temperature;
-        float humidity_change = humidity - prev_humidity;
+        float temp_change = temp - prev_temp;
+        float humidity_change = hum - prev_hum;
         float pressure_change = pressure - prev_pressure;
         float gas_change = gas_resistance - prev_gas_resistance;
-        float ammonia_change = ammoniaPPM - prev_ammonia;
-        int pm1_0_change = pm1_0_val - prev_pm1_0;
-        int pm2_5_change = pm2_5_val - prev_pm2_5;
-        int pm10_change = pm10_val - prev_pm10;
+        float ammonia_change = nh3 - prev_nh3;
+        int pm1_change = pm1 - prev_pm1;
+        int pm25_change = pm25 - prev_pm25;
+        int pm10_change = pm10 - prev_pm10;
         
         // Calculate percentage changes (avoid division by zero)
-        float temp_pct = (prev_temperature != 0) ? (temp_change / prev_temperature) * 100 : 0;
-        float humidity_pct = (prev_humidity != 0) ? (humidity_change / prev_humidity) * 100 : 0;
+        float temp_pct = (prev_temp != 0) ? (temp_change / prev_temp) * 100 : 0;
+        float humidity_pct = (prev_hum != 0) ? (humidity_change / prev_hum) * 100 : 0;
         float pressure_pct = (prev_pressure != 0) ? (pressure_change / prev_pressure) * 100 : 0;
         float gas_pct = (prev_gas_resistance != 0) ? (gas_change / prev_gas_resistance) * 100 : 0;
-        float ammonia_pct = (prev_ammonia != 0) ? (ammonia_change / prev_ammonia) * 100 : 0;
-        float pm1_0_pct = (prev_pm1_0 != 0) ? (pm1_0_change / (float)prev_pm1_0) * 100 : 0;
-        float pm2_5_pct = (prev_pm2_5 != 0) ? (pm2_5_change / (float)prev_pm2_5) * 100 : 0;
+        float ammonia_pct = (prev_nh3 != 0) ? (ammonia_change / prev_nh3) * 100 : 0;
+        float pm1_pct = (prev_pm1 != 0) ? (pm1_change / (float)prev_pm1) * 100 : 0;
+        float pm25_pct = (prev_pm25 != 0) ? (pm25_change / (float)prev_pm25) * 100 : 0;
         float pm10_pct = (prev_pm10 != 0) ? (pm10_change / (float)prev_pm10) * 100 : 0;
         
         // Determine status based on values
-        const char* temp_status = (temperature >= 20 && temperature <= 30) ? "Normal" : "Warning";
-        const char* humidity_status = (humidity >= 40 && humidity <= 70) ? "Normal" : "Warning";
+        const char* temp_status = (temp >= 20 && temp <= 30) ? "Normal" : "Warning";
+        const char* humidity_status = (hum >= 40 && hum <= 70) ? "Normal" : "Warning";
         const char* pressure_status = (pressure >= 1000 && pressure <= 1020) ? "Normal" : "Warning";
         const char* gas_status = (gas_resistance >= 10 && gas_resistance <= 50) ? "Normal" : "Warning";
-        const char* ammonia_status = (ammoniaPPM <= 1.0) ? "Normal" : "Warning";
-        const char* pm1_0_status = (pm1_0_val <= 50) ? "Normal" : "Warning";
-        const char* pm2_5_status = (pm2_5_val <= 35) ? "Normal" : "Warning";
-        const char* pm10_status = (pm10_val <= 150) ? "Normal" : "Warning";
+        const char* ammonia_status = (nh3 <= 1.0) ? "Normal" : "Warning";
+        const char* pm1_status = (pm1 <= 50) ? "Normal" : "Warning";
+        const char* pm25_status = (pm25 <= 35) ? "Normal" : "Warning";
+        const char* pm10_status = (pm10 <= 150) ? "Normal" : "Warning";
         
         // Construct enhanced JSON payload
         char jsonData[800]; 
@@ -202,27 +173,27 @@ void loop() {
                  "\"pressure\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
                  "\"gas_resistance\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
                  "\"ammonia\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
-                 "\"pm1_0\":{\"value\":%u,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f},"
-                 "\"pm2_5\":{\"value\":%u,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f},"
-                 "\"pm10\":{\"value\":%u,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f}}",
-                 isnan(temperature) ? 0.00 : temperature, temp_status, temp_change, temp_pct,
-                 isnan(humidity) ? 0.00 : humidity, humidity_status, humidity_change, humidity_pct,
-                 isnan(pressure) ? 0.00 : pressure, pressure_status, pressure_change, pressure_pct,
-                 isnan(gas_resistance) ? 0.00 : gas_resistance, gas_status, gas_change, gas_pct,
-                 ammoniaPPM, ammonia_status, ammonia_change, ammonia_pct,
-                 pm1_0_val, pm1_0_status, pm1_0_change, pm1_0_pct,
-                 pm2_5_val, pm2_5_status, pm2_5_change, pm2_5_pct,
-                 pm10_val, pm10_status, pm10_change, pm10_pct);
+                 "\"pm1\":{\"value\":%d,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f},"
+                 "\"pm25\":{\"value\":%d,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f},"
+                 "\"pm10\":{\"value\":%d,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f}}",
+                 temp, temp_status, temp_change, temp_pct,
+                 hum, humidity_status, humidity_change, humidity_pct,
+                 pressure, pressure_status, pressure_change, pressure_pct,
+                 gas_resistance, gas_status, gas_change, gas_pct,
+                 nh3, ammonia_status, ammonia_change, ammonia_pct,
+                 pm1, pm1_status, pm1_change, pm1_pct,
+                 pm25, pm25_status, pm25_change, pm25_pct,
+                 pm10, pm10_status, pm10_change, pm10_pct);
         
         // Update previous values for next iteration
-        prev_temperature = isnan(temperature) ? 0.00 : temperature;
-        prev_humidity = isnan(humidity) ? 0.00 : humidity;
-        prev_pressure = isnan(pressure) ? 0.00 : pressure;
-        prev_gas_resistance = isnan(gas_resistance) ? 0.00 : gas_resistance;
-        prev_ammonia = ammoniaPPM;
-        prev_pm1_0 = pm1_0_val;
-        prev_pm2_5 = pm2_5_val;
-        prev_pm10 = pm10_val;
+        prev_temp = temp;
+        prev_hum = hum;
+        prev_pressure = pressure;
+        prev_gas_resistance = gas_resistance;
+        prev_nh3 = nh3;
+        prev_pm1 = pm1;
+        prev_pm25 = pm25;
+        prev_pm10 = pm10;
         
         Serial.print("[BLE] Sending data to connected device: ");
         Serial.println(jsonData);  // Your JSON data
