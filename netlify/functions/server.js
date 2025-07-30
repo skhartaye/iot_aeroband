@@ -42,14 +42,7 @@ export const handler = async (event, context) => {
           
         case '/devices':
           if (httpMethod === 'GET') {
-            const devices = await prisma.device.findMany({
-              include: {
-                sensorData: {
-                  orderBy: { timestamp: 'desc' },
-                  take: 1
-                }
-              }
-            });
+            const devices = await prisma.device.findMany();
             return {
               statusCode: 200,
               headers,
@@ -71,9 +64,6 @@ export const handler = async (event, context) => {
         case '/sensor-data':
           if (httpMethod === 'GET') {
             const data = await prisma.sensorData.findMany({
-              include: {
-                device: true
-              },
               orderBy: {
                 timestamp: 'desc'
               }
@@ -114,9 +104,6 @@ export const handler = async (event, context) => {
             const deviceId = pathSegments[2];
             const data = await prisma.sensorData.findMany({
               where: { deviceId },
-              include: {
-                device: true
-              },
               orderBy: {
                 timestamp: 'desc'
               }
