@@ -102,7 +102,8 @@ function App() {
               pm1: pm1,
               pm25: pm25,
               pm10: pm10,
-              nh3: nh3
+              nh3: nh3,
+              deviceId: 'ESP32_001' // Use the existing device ID
             });
             
             return {
