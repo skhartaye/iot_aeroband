@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Netlify function handler
+// Netlify function handler - Updated to remove Express dependency
 export const handler = async (event, context) => {
   // Handle CORS
   const headers = {
