@@ -120,6 +120,22 @@ export const handler = async (event, context) => {
               try {
                 const prismaClient = getPrismaClient();
                 if (prismaClient) {
+                  // First, ensure the device exists
+                  try {
+                    await prismaClient.device.upsert({
+                      where: { deviceId: deviceId },
+                      update: {},
+                      create: {
+                        name: deviceId,
+                        deviceId: deviceId,
+                        location: 'Default',
+                        status: 'active'
+                      }
+                    });
+                  } catch (deviceError) {
+                    console.log('Device creation failed, continuing without device:', deviceError.message);
+                  }
+                  
                   const sensorData = await prismaClient.sensorData.create({
                     data: { 
                       temperature: parseFloat(temperature) || 0,
