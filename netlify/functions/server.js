@@ -1,16 +1,24 @@
 import { PrismaClient } from '@prisma/client';
 
-let prisma;
+let prisma = null;
 
-try {
-  prisma = new PrismaClient();
-  console.log('Prisma client initialized successfully');
-} catch (error) {
-  console.error('Failed to initialize Prisma:', error);
-  prisma = null;
-}
+// Initialize Prisma client
+const getPrismaClient = () => {
+  if (!prisma) {
+    try {
+      prisma = new PrismaClient({
+        log: ['query', 'info', 'warn', 'error'],
+      });
+      console.log('Prisma client initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Prisma:', error);
+      return null;
+    }
+  }
+  return prisma;
+};
 
-// Netlify function handler - Updated to remove Express dependency
+// Netlify function handler
 export const handler = async (event, context) => {
   // Handle CORS
   const headers = {
@@ -25,15 +33,6 @@ export const handler = async (event, context) => {
       statusCode: 200,
       headers,
       body: ''
-    };
-  }
-
-  // Check if Prisma is available
-  if (!prisma) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Database connection not available' })
     };
   }
 
@@ -59,15 +58,33 @@ export const handler = async (event, context) => {
           
         case '/devices':
           if (httpMethod === 'GET') {
-            const devices = await prisma.device.findMany();
+            const prismaClient = getPrismaClient();
+            if (!prismaClient) {
+              return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ error: 'Database connection not available' })
+              };
+            }
+            
+            const devices = await prismaClient.device.findMany();
             return {
               statusCode: 200,
               headers,
               body: JSON.stringify(devices)
             };
           } else if (httpMethod === 'POST') {
+            const prismaClient = getPrismaClient();
+            if (!prismaClient) {
+              return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ error: 'Database connection not available' })
+              };
+            }
+            
             const { name, deviceId, location } = requestBody;
-            const device = await prisma.device.create({
+            const device = await prismaClient.device.create({
               data: { name, deviceId, location }
             });
             return {
@@ -80,7 +97,16 @@ export const handler = async (event, context) => {
           
         case '/sensor-data':
           if (httpMethod === 'GET') {
-            const data = await prisma.sensorData.findMany({
+            const prismaClient = getPrismaClient();
+            if (!prismaClient) {
+              return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ error: 'Database connection not available' })
+              };
+            }
+            
+            const data = await prismaClient.sensorData.findMany({
               orderBy: {
                 timestamp: 'desc'
               }
@@ -119,9 +145,18 @@ export const handler = async (event, context) => {
                 deviceId 
               });
               
-              // Test database connection first
+              const prismaClient = getPrismaClient();
+              if (!prismaClient) {
+                return {
+                  statusCode: 500,
+                  headers,
+                  body: JSON.stringify({ error: 'Database connection not available' })
+                };
+              }
+              
+              // Test database connection
               try {
-                await prisma.$connect();
+                await prismaClient.$connect();
                 console.log('Database connected successfully');
               } catch (dbError) {
                 console.error('Database connection failed:', dbError);
@@ -132,7 +167,7 @@ export const handler = async (event, context) => {
                 };
               }
               
-              const sensorData = await prisma.sensorData.create({
+              const sensorData = await prismaClient.sensorData.create({
                 data: { 
                   temperature: parseFloat(temperature) || 0,
                   humidity: parseFloat(humidity) || 0,
@@ -170,8 +205,17 @@ export const handler = async (event, context) => {
         default:
           // Handle /sensor-data/:deviceId
           if (apiPath.startsWith('/sensor-data/')) {
+            const prismaClient = getPrismaClient();
+            if (!prismaClient) {
+              return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ error: 'Database connection not available' })
+              };
+            }
+            
             const deviceId = pathSegments[2];
-            const data = await prisma.sensorData.findMany({
+            const data = await prismaClient.sensorData.findMany({
               where: { deviceId },
               orderBy: {
                 timestamp: 'desc'
