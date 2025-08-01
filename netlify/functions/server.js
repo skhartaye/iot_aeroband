@@ -4,6 +4,7 @@ let prisma;
 
 try {
   prisma = new PrismaClient();
+  console.log('Prisma client initialized successfully');
 } catch (error) {
   console.error('Failed to initialize Prisma:', error);
   prisma = null;
@@ -117,6 +118,19 @@ export const handler = async (event, context) => {
                 pm10, 
                 deviceId 
               });
+              
+              // Test database connection first
+              try {
+                await prisma.$connect();
+                console.log('Database connected successfully');
+              } catch (dbError) {
+                console.error('Database connection failed:', dbError);
+                return {
+                  statusCode: 500,
+                  headers,
+                  body: JSON.stringify({ error: 'Database connection failed', details: dbError.message })
+                };
+              }
               
               const sensorData = await prisma.sensorData.create({
                 data: { 
