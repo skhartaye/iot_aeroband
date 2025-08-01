@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CloudIcon, SunIcon, ArrowTrendingUpIcon, SparklesIcon, FireIcon, MoonIcon, HomeIcon, ChartBarIcon } from '@heroicons/react/24/solid';
+import { CloudIcon, SunIcon, ArrowTrendingUpIcon, SparklesIcon, FireIcon, MoonIcon, HomeIcon, ChartBarIcon, BeakerIcon, EyeIcon } from '@heroicons/react/24/solid';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -18,18 +18,28 @@ function App() {
   const [device, setDevice] = useState(null);
   const [server, setServer] = useState(null);
   const [data, setData] = useState({
-    humid: null,
-    temp: null,
+    temperature: null,
+    humidity: null,
     pressure: null,
-    pm25: null,
-    gasResistance: null,
+    gas_resistance: null,
+    co: null,
+    nh3: null,
+    no2: null,
+    pm1_0: null,
+    pm2_5: null,
+    pm10: null,
   });
   const [history, setHistory] = useState({
-    humid: [],
-    temp: [],
+    temperature: [],
+    humidity: [],
     pressure: [],
-    pm25: [],
-    gasResistance: [],
+    gas_resistance: [],
+    co: [],
+    nh3: [],
+    no2: [],
+    pm1_0: [],
+    pm2_5: [],
+    pm10: [],
   });
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +47,7 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [theme, setTheme] = useState('light');
   const [viewMode, setViewMode] = useState('home'); // 'home' or 'graphs'
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   // Theme toggle effect
   useEffect(() => {
@@ -78,40 +89,54 @@ function App() {
           console.log('Received BLE data:', dataObj);
           
           setData(prev => {
-            // Extract values from the ESP32 format: {"temp":22.8,"hum":40.7,"pm1":21,"pm25":19,"pm10":31,"nh3":913.08}
-            const temp = dataObj.temp;
-            const humid = dataObj.hum;
-            const pm1 = dataObj.pm1;
-            const pm25 = dataObj.pm25;
-            const pm10 = dataObj.pm10;
-            const nh3 = dataObj.nh3;
+            // Extract values from the new ESP32 format
+            const {
+              temperature,
+              humidity,
+              pressure,
+              gas_resistance,
+              co,
+              nh3,
+              no2,
+              pm1_0,
+              pm2_5,
+              pm10
+            } = dataObj;
             
             // Update history for each metric
             setHistory(h => ({
-              humid: updateHistory(h.humid, humid),
-              temp: updateHistory(h.temp, temp),
-              pressure: updateHistory(h.pressure, null), // Not in current format
-              pm25: updateHistory(h.pm25, pm25),
-              gasResistance: updateHistory(h.gasResistance, nh3), // Using nh3 as gas resistance
+              temperature: updateHistory(h.temperature, temperature),
+              humidity: updateHistory(h.humidity, humidity),
+              pressure: updateHistory(h.pressure, pressure),
+              gas_resistance: updateHistory(h.gas_resistance, gas_resistance),
+              co: updateHistory(h.co, co),
+              nh3: updateHistory(h.nh3, nh3),
+              no2: updateHistory(h.no2, no2),
+              pm1_0: updateHistory(h.pm1_0, pm1_0),
+              pm2_5: updateHistory(h.pm2_5, pm2_5),
+              pm10: updateHistory(h.pm10, pm10),
             }));
             
             // Send data to API
             sendToAPI({
-              temp: temp,
-              hum: humid,
-              pm1: pm1,
-              pm25: pm25,
-              pm10: pm10,
-              nh3: nh3,
+              ...dataObj,
               deviceId: 'ESP32_001' // Use the existing device ID
             });
             
+            // Update last update timestamp
+            setLastUpdate(new Date());
+            
             return {
-              temp: temp,
-              humid: humid,
-              pressure: null, // Not available in current format
-              pm25: pm25,
-              gasResistance: nh3, // Using nh3 as gas resistance
+              temperature,
+              humidity,
+              pressure,
+              gas_resistance,
+              co,
+              nh3,
+              no2,
+              pm1_0,
+              pm2_5,
+              pm10,
             };
           });
         } catch (e) {
@@ -166,10 +191,16 @@ function App() {
 
   // Card data array for easier mapping
   const cards = [
-    { key: 'humid', label: 'Humidity', value: data.humid, unit: '%', icon: CloudIcon, color: 'from-blue-200 to-blue-100' },
-    { key: 'temp', label: 'Temperature', value: data.temp, unit: '°C', icon: SunIcon, color: 'from-red-200 to-red-100' },
-    { key: 'pm25', label: 'PM 2.5', value: data.pm25, unit: 'µg/m³', icon: SparklesIcon, color: 'from-yellow-200 to-yellow-100' },
-    { key: 'gasResistance', label: 'NH3 (Ammonia)', value: data.gasResistance, unit: 'ppm', icon: FireIcon, color: 'from-purple-200 to-purple-100' },
+    { key: 'temperature', label: 'Temperature', value: data.temperature, unit: '°C', icon: SunIcon, color: 'from-red-200 to-red-100' },
+    { key: 'humidity', label: 'Humidity', value: data.humidity, unit: '%', icon: CloudIcon, color: 'from-blue-200 to-blue-100' },
+    { key: 'pressure', label: 'Pressure', value: data.pressure, unit: 'hPa', icon: ArrowTrendingUpIcon, color: 'from-green-200 to-green-100' },
+    { key: 'gas_resistance', label: 'Gas Resistance', value: data.gas_resistance, unit: 'kΩ', icon: FireIcon, color: 'from-orange-200 to-orange-100' },
+    { key: 'co', label: 'CO', value: data.co, unit: 'ppm', icon: BeakerIcon, color: 'from-purple-200 to-purple-100' },
+    { key: 'nh3', label: 'NH3', value: data.nh3, unit: 'ppm', icon: EyeIcon, color: 'from-indigo-200 to-indigo-100' },
+    { key: 'no2', label: 'NO2', value: data.no2, unit: 'ppm', icon: SparklesIcon, color: 'from-pink-200 to-pink-100' },
+    { key: 'pm1_0', label: 'PM1.0', value: data.pm1_0, unit: 'µg/m³', icon: SparklesIcon, color: 'from-yellow-200 to-yellow-100' },
+    { key: 'pm2_5', label: 'PM2.5', value: data.pm2_5, unit: 'µg/m³', icon: SparklesIcon, color: 'from-amber-200 to-amber-100' },
+    { key: 'pm10', label: 'PM10', value: data.pm10, unit: 'µg/m³', icon: SparklesIcon, color: 'from-orange-200 to-orange-100' },
   ];
 
   return (
@@ -224,7 +255,12 @@ function App() {
       <main className="w-full flex flex-col items-center flex-1 py-6 px-2">
         <h1 className="text-3xl font-extrabold mb-4 text-gray-800 dark:text-gray-100 drop-shadow-sm">BLE Dashboard</h1>
         {error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
-        <section className="w-full max-w-4xl">
+        {lastUpdate && (
+          <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+            Last updated: {lastUpdate.toLocaleTimeString()}
+          </div>
+        )}
+        <section className="w-full max-w-6xl">
           <div className="flex flex-col items-center mb-2">
             <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-1 tracking-tight">Live Sensor Data</h2>
             <div className="w-12 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-yellow-400 rounded-full mb-1" />
