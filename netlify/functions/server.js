@@ -116,53 +116,33 @@ export const handler = async (event, context) => {
                 deviceId 
               });
               
-              // Try to save to database using raw SQL to bypass Prisma schema issues
+              // Try to save to database using Prisma client
               try {
                 const prismaClient = getPrismaClient();
                 if (prismaClient) {
-                  // Use raw SQL to insert data
-                  const result = await prismaClient.$executeRaw`
-                    INSERT INTO "SensorData" (
-                      "temperature", "humidity", "pressure", "gas_resistance", 
-                      "co", "nh3", "no2", "pm2_5", "pm10", "deviceId", 
-                      "location", "status", "timestamp"
-                    ) VALUES (
-                      ${parseFloat(temperature) || 0}, 
-                      ${parseFloat(humidity) || 0}, 
-                      ${parseFloat(pressure) || 0}, 
-                      ${parseFloat(gas_resistance) || 0},
-                      ${parseFloat(co) || 0}, 
-                      ${parseFloat(nh3) || 0}, 
-                      ${parseFloat(no2) || 0}, 
-                      ${parseInt(pm2_5) || 0}, 
-                      ${parseInt(pm10) || 0}, 
-                      ${deviceId}, 
-                      'Default', 
-                      'active', 
-                      NOW()
-                    )
-                  `;
+                  const sensorData = await prismaClient.sensorData.create({
+                    data: { 
+                      temperature: parseFloat(temperature) || 0,
+                      humidity: parseFloat(humidity) || 0,
+                      pressure: parseFloat(pressure) || 0,
+                      gas_resistance: parseFloat(gas_resistance) || 0,
+                      co: parseFloat(co) || 0,
+                      nh3: parseFloat(nh3) || 0,
+                      no2: parseFloat(no2) || 0,
+                      pm2_5: parseInt(pm2_5) || 0,
+                      pm10: parseInt(pm10) || 0,
+                      deviceId: deviceId,
+                      location: 'Default',
+                      status: 'active'
+                    }
+                  });
                   
-                  console.log('Sensor data saved successfully using raw SQL');
+                  console.log('Sensor data saved successfully:', sensorData);
                   
                   return {
                     statusCode: 201,
                     headers,
-                    body: JSON.stringify({ 
-                      message: 'Data saved successfully to database',
-                      data: {
-                        temperature,
-                        humidity,
-                        pressure,
-                        gas_resistance,
-                        co,
-                        nh3,
-                        no2,
-                        pm2_5,
-                        pm10,
-                        deviceId
-                      }
-                    })
+                    body: JSON.stringify(sensorData)
                   };
                 } else {
                   // Fallback if Prisma is not available

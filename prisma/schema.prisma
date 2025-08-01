@@ -8,30 +8,30 @@ datasource db {
 }
 
 model Device {
-  id          Int         @id @default(autoincrement())
-  name        String      @unique
-  deviceId    String      @unique
-  location    String?
-  status      String      @default("active")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  sensorData  SensorData[]
+  id         Int          @id @default(autoincrement())
+  name       String       @unique
+  deviceId   String       @unique
+  location   String?
+  status     String       @default("active")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  sensorData SensorData[]
 }
 
 model SensorData {
-  id            Int      @id @default(autoincrement())
-  temperature   Float    @default(0)
-  humidity      Float    @default(0)
-  pressure      Float    @default(0)
-  gas_resistance Float   @default(0)
-  co            Float    @default(0)
-  nh3           Float    @default(0)
-  no2           Float    @default(0)
-  pm2_5         Int      @default(0)
-  pm10          Int      @default(0)
-  deviceId      String?
-  location      String?
-  status        String?
-  timestamp     DateTime @default(now())
-  device        Device?  @relation(fields: [deviceId], references: [deviceId])
+  id             Int      @id @default(autoincrement())
+  temperature    Float    @default(0)
+  humidity       Float    @default(0)
+  pressure       Float    @default(0)
+  gas_resistance Float    @default(0)
+  co             Float    @default(0)
+  nh3            Float    @default(0)
+  no2            Float    @default(0)
+  pm2_5          Int      @default(0)
+  pm10           Int      @default(0)
+  deviceId       String?
+  location       String?
+  status         String?
+  timestamp      DateTime @default(now())
+  device         Device?  @relation(fields: [deviceId], references: [deviceId])
 }
