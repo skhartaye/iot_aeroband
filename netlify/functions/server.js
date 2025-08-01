@@ -92,19 +92,42 @@ export const handler = async (event, context) => {
           } else if (httpMethod === 'POST') {
             try {
               console.log('Received sensor data:', requestBody);
-              const { temp, hum, pm1, pm25, pm10, nh3, deviceId = 'ESP32_Sensor' } = requestBody;
+              const { 
+                temperature, 
+                humidity, 
+                pressure, 
+                gas_resistance, 
+                co, 
+                nh3, 
+                no2, 
+                pm2_5, 
+                pm10, 
+                deviceId = 'ESP32_Sensor' 
+              } = requestBody;
               
-              console.log('Parsed values:', { temp, hum, pm1, pm25, pm10, nh3, deviceId });
+              console.log('Parsed values:', { 
+                temperature, 
+                humidity, 
+                pressure, 
+                gas_resistance, 
+                co, 
+                nh3, 
+                no2, 
+                pm2_5, 
+                pm10, 
+                deviceId 
+              });
               
               const sensorData = await prisma.sensorData.create({
                 data: { 
-                  temperature: parseFloat(temp) || 0,
-                  humidity: parseFloat(hum) || 0,
-                  pressure: 0, // Default value instead of null
-                  gas_resistance: parseFloat(nh3) || 0,
-                  ammonia: parseFloat(nh3) || 0,
-                  pm1: parseInt(pm1) || 0,
-                  pm25: parseInt(pm25) || 0,
+                  temperature: parseFloat(temperature) || 0,
+                  humidity: parseFloat(humidity) || 0,
+                  pressure: parseFloat(pressure) || 0,
+                  gas_resistance: parseFloat(gas_resistance) || 0,
+                  co: parseFloat(co) || 0,
+                  nh3: parseFloat(nh3) || 0,
+                  no2: parseFloat(no2) || 0,
+                  pm2_5: parseInt(pm2_5) || 0,
                   pm10: parseInt(pm10) || 0,
                   deviceId: deviceId,
                   location: 'Default',

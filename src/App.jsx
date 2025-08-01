@@ -25,7 +25,6 @@ function App() {
     co: null,
     nh3: null,
     no2: null,
-    pm1_0: null,
     pm2_5: null,
     pm10: null,
   });
@@ -37,7 +36,6 @@ function App() {
     co: [],
     nh3: [],
     no2: [],
-    pm1_0: [],
     pm2_5: [],
     pm10: [],
   });
@@ -98,7 +96,6 @@ function App() {
               co,
               nh3,
               no2,
-              pm1_0,
               pm2_5,
               pm10
             } = dataObj;
@@ -112,7 +109,6 @@ function App() {
               co: updateHistory(h.co, co),
               nh3: updateHistory(h.nh3, nh3),
               no2: updateHistory(h.no2, no2),
-              pm1_0: updateHistory(h.pm1_0, pm1_0),
               pm2_5: updateHistory(h.pm2_5, pm2_5),
               pm10: updateHistory(h.pm10, pm10),
             }));
@@ -134,7 +130,6 @@ function App() {
               co,
               nh3,
               no2,
-              pm1_0,
               pm2_5,
               pm10,
             };
@@ -198,7 +193,6 @@ function App() {
     { key: 'co', label: 'CO', value: data.co, unit: 'ppm', icon: BeakerIcon, color: 'from-purple-200 to-purple-100' },
     { key: 'nh3', label: 'NH3', value: data.nh3, unit: 'ppm', icon: EyeIcon, color: 'from-indigo-200 to-indigo-100' },
     { key: 'no2', label: 'NO2', value: data.no2, unit: 'ppm', icon: SparklesIcon, color: 'from-pink-200 to-pink-100' },
-    { key: 'pm1_0', label: 'PM1.0', value: data.pm1_0, unit: 'µg/m³', icon: SparklesIcon, color: 'from-yellow-200 to-yellow-100' },
     { key: 'pm2_5', label: 'PM2.5', value: data.pm2_5, unit: 'µg/m³', icon: SparklesIcon, color: 'from-amber-200 to-amber-100' },
     { key: 'pm10', label: 'PM10', value: data.pm10, unit: 'µg/m³', icon: SparklesIcon, color: 'from-orange-200 to-orange-100' },
   ];
@@ -253,7 +247,6 @@ function App() {
         </div>
       </nav>
       <main className="w-full flex flex-col items-center flex-1 py-6 px-2">
-        <h1 className="text-3xl font-extrabold mb-4 text-gray-800 dark:text-gray-100 drop-shadow-sm">BLE Dashboard</h1>
         {error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
         {lastUpdate && (
           <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
@@ -262,13 +255,26 @@ function App() {
         )}
         <section className="w-full max-w-6xl">
           <div className="flex flex-col items-center mb-2">
-            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-1 tracking-tight">Live Sensor Data</h2>
+          <h1 className="text-3xl font-extrabold mb-4 text-gray-800 dark:text-gray-100 drop-shadow-sm">Live Sensor Data</h1>
             <div className="w-12 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-yellow-400 rounded-full mb-1" />
             <p className="text-gray-400 dark:text-gray-500 text-xs">Updated in real time from your BLE device</p>
           </div>
           <div className="w-full">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              {cards.map((card, idx) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
+              {cards.slice(0, 4).map((card, idx) => (
+                <DataCard
+                  key={card.label}
+                  label={card.label}
+                  value={card.value}
+                  unit={card.unit}
+                  Icon={card.icon}
+                  history={history[card.key]}
+                  showGraph={viewMode === 'graphs'}
+                />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 max-w-6xl mx-auto mt-4">
+              {cards.slice(4).map((card, idx) => (
                 <DataCard
                   key={card.label}
                   label={card.label}

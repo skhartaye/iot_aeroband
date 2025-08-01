@@ -40,18 +40,31 @@ app.get('/devices', async (req, res) => {
 
 // POST endpoint to receive sensor data
 app.post('/sensor-data', async (req, res) => {
-  const { temp, hum, pm1, pm25, pm10, nh3, deviceId = 'ESP32_Sensor' } = req.body;
+  const { 
+    temperature, 
+    humidity, 
+    pressure, 
+    gas_resistance, 
+    co, 
+    nh3, 
+    no2, 
+    pm2_5, 
+    pm10, 
+    deviceId = 'ESP32_Sensor' 
+  } = req.body;
+  
   try {
     const sensorData = await prisma.sensorData.create({
       data: { 
-        temperature: temp,
-        humidity: hum,
-        pressure: null, // Not available in current format
-        gas_resistance: nh3, // Using nh3 as gas resistance
-        ammonia: nh3, // Also store as ammonia
-        pm1: pm1,
-        pm25: pm25,
-        pm10: pm10,
+        temperature: temperature || 0,
+        humidity: humidity || 0,
+        pressure: pressure || 0,
+        gas_resistance: gas_resistance || 0,
+        co: co || 0,
+        nh3: nh3 || 0,
+        no2: no2 || 0,
+        pm2_5: pm2_5 || 0,
+        pm10: pm10 || 0,
         deviceId: deviceId,
         location: 'Default',
         status: 'active'
