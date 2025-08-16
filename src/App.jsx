@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CloudIcon, SunIcon, ArrowTrendingUpIcon, SparklesIcon, FireIcon, MoonIcon, HomeIcon, ChartBarIcon, BeakerIcon, EyeIcon } from '@heroicons/react/24/solid';
+import { CloudIcon, SunIcon, ArrowTrendingUpIcon, SparklesIcon, FireIcon, MoonIcon, HomeIcon, ChartBarIcon, BeakerIcon, EyeIcon, MapIcon } from '@heroicons/react/24/solid';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -10,6 +10,7 @@ import {
   Tooltip,
   Filler,
 } from 'chart.js';
+import Maps from './Maps.jsx';
 import './App.css';
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
@@ -44,7 +45,7 @@ function App() {
   const [deviceName, setDeviceName] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [theme, setTheme] = useState('light');
-  const [viewMode, setViewMode] = useState('home'); // 'home' or 'graphs'
+  const [viewMode, setViewMode] = useState('home'); // 'home', 'graphs', or 'maps'
   const [lastUpdate, setLastUpdate] = useState(null);
 
   // Theme toggle effect
@@ -228,13 +229,29 @@ function App() {
               Disconnect
             </button>
           )}
-          {/* Graphs toggle (desktop only) */}
+          {/* View mode toggle (desktop only) */}
           <button
-            className="hidden md:flex items-center gap-2 px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition"
+            className={`hidden md:flex items-center gap-2 px-2 py-1 rounded transition ${
+              viewMode === 'graphs' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+            }`}
             onClick={() => setViewMode(viewMode === 'home' ? 'graphs' : 'home')}
           >
             {viewMode === 'home' ? <ChartBarIcon className="h-5 w-5" /> : <HomeIcon className="h-5 w-5" />}
             <span>{viewMode === 'home' ? 'Graphs' : 'Default'}</span>
+          </button>
+          {/* Maps button */}
+          <button
+            className={`hidden md:flex items-center gap-2 px-2 py-1 rounded transition ${
+              viewMode === 'maps' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+            }`}
+            onClick={() => setViewMode('maps')}
+          >
+            <MapIcon className="h-5 w-5" />
+            <span>Maps</span>
           </button>
           {/* Theme toggle */}
           <button
@@ -247,47 +264,53 @@ function App() {
         </div>
       </nav>
       <main className="w-full flex flex-col items-center flex-1 py-6 px-2">
-        {error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
-        {lastUpdate && (
-          <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            Last updated: {lastUpdate.toLocaleTimeString()}
-          </div>
+        {viewMode === 'maps' ? (
+          <Maps />
+        ) : (
+          <>
+            {error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
+            {lastUpdate && (
+              <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                Last updated: {lastUpdate.toLocaleTimeString()}
+              </div>
+            )}
+            <section className="w-full max-w-6xl">
+              <div className="flex flex-col items-center mb-2">
+              <h1 className="text-3xl font-extrabold mb-4 text-gray-800 dark:text-gray-100 drop-shadow-sm">Live Sensor Data</h1>
+                <div className="w-12 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-yellow-400 rounded-full mb-1" />
+                <p className="text-gray-400 dark:text-gray-500 text-xs">Updated in real time from your BLE device</p>
+              </div>
+              <div className="w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
+                  {cards.slice(0, 4).map((card, idx) => (
+                    <DataCard
+                      key={card.label}
+                      label={card.label}
+                      value={card.value}
+                      unit={card.unit}
+                      Icon={card.icon}
+                      history={history[card.key]}
+                      showGraph={viewMode === 'graphs'}
+                    />
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 max-w-6xl mx-auto mt-4">
+                  {cards.slice(4).map((card, idx) => (
+                    <DataCard
+                      key={card.label}
+                      label={card.label}
+                      value={card.value}
+                      unit={card.unit}
+                      Icon={card.icon}
+                      history={history[card.key]}
+                      showGraph={viewMode === 'graphs'}
+                    />
+                  ))}
+                </div>
+              </div>
+            </section>
+          </>
         )}
-        <section className="w-full max-w-6xl">
-          <div className="flex flex-col items-center mb-2">
-          <h1 className="text-3xl font-extrabold mb-4 text-gray-800 dark:text-gray-100 drop-shadow-sm">Live Sensor Data</h1>
-            <div className="w-12 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-yellow-400 rounded-full mb-1" />
-            <p className="text-gray-400 dark:text-gray-500 text-xs">Updated in real time from your BLE device</p>
-          </div>
-          <div className="w-full">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
-              {cards.slice(0, 4).map((card, idx) => (
-                <DataCard
-                  key={card.label}
-                  label={card.label}
-                  value={card.value}
-                  unit={card.unit}
-                  Icon={card.icon}
-                  history={history[card.key]}
-                  showGraph={viewMode === 'graphs'}
-                />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 max-w-6xl mx-auto mt-4">
-              {cards.slice(4).map((card, idx) => (
-                <DataCard
-                  key={card.label}
-                  label={card.label}
-                  value={card.value}
-                  unit={card.unit}
-                  Icon={card.icon}
-                  history={history[card.key]}
-                  showGraph={viewMode === 'graphs'}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
       </main>
       {/* Bottom nav for mobile */}
       <nav className="fixed bottom-0 left-0 w-full flex md:hidden justify-around items-center bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-700 z-50 h-14">
@@ -304,6 +327,13 @@ function App() {
         >
           <ChartBarIcon className="h-6 w-6 mb-1" />
           <span className="text-xs">Graphs</span>
+        </button>
+        <button
+          className={`flex flex-col items-center justify-center flex-1 py-2 ${viewMode === 'maps' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
+          onClick={() => setViewMode('maps')}
+        >
+          <MapIcon className="h-6 w-6 mb-1" />
+          <span className="text-xs">Maps</span>
         </button>
       </nav>
     </div>

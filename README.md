@@ -8,6 +8,7 @@ This project is an end-to-end IoT solution that collects sensor data from a micr
 - **Microcontroller Integration:** ESP32/Arduino sends sensor data via HTTP POST and BLE.
 - **Backend:** Node.js + Express API with Prisma ORM, connected to Neon Postgres.
 - **Frontend:** React app with BLE support to receive and forward sensor data.
+- **Interactive Maps:** Real-time sensor location mapping with Leaflet integration.
 - **Database:** Neon (serverless Postgres) for scalable, cloud-based storage.
 
 ---
@@ -74,6 +75,26 @@ npm run dev
 ## BLE Integration (Frontend)
 - Use the `trial.jsx` React component to connect to the BLE device (`AerobandSensor`).
 - The frontend listens for BLE notifications, parses the JSON, and can POST to the backend.
+
+## Maps Feature
+- **Interactive Sensor Map:** Navigate to the Maps view to see all sensor locations on an interactive map.
+- **Real-time Data:** View current sensor readings including temperature, humidity, PM2.5, PM10, and CO levels.
+- **Location Management:** Click on map markers or use the sidebar to select and center on specific sensors.
+- **Air Quality Indicators:** Color-coded air quality status (Excellent, Good, Moderate, Poor) for quick assessment.
+- **User Location Detection:** Automatically detects and displays your current location on the map.
+- **IQ Air Integration:** Shows real-time air quality data from nearby monitoring stations.
+- **Responsive Design:** Works seamlessly on both desktop and mobile devices.
+
+### Setting up IQ Air API
+1. **Get Free API Key:** Visit [https://aqicn.org/data-platform/token/](https://aqicn.org/data-platform/token/) to get your free API key.
+2. **Configure API Key:** Update `src/config.js` with your API key:
+   ```javascript
+   export const IQ_AIR_CONFIG = {
+     API_KEY: 'your_actual_api_key_here',
+     // ... other config
+   };
+   ```
+3. **Features:** The API provides real-time AQI data, PM2.5, PM10, temperature, humidity, and pressure readings from monitoring stations worldwide.
 
 ---
 
