@@ -7,6 +7,7 @@ import {
 
 
 
+
 export default function Maps() {
   const [userLocation, setUserLocation] = useState(null);
   const [nearbyStations, setNearbyStations] = useState([]);
@@ -15,6 +16,8 @@ export default function Maps() {
   const [heatmapData, setHeatmapData] = useState([]);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  
+
 
   // Get user's current location
   const getUserLocation = () => {
@@ -404,6 +407,8 @@ export default function Maps() {
     setSelectedLocation(location);
   };
 
+
+
   // Get user location on component mount
   useEffect(() => {
     getUserLocation();
@@ -418,6 +423,8 @@ export default function Maps() {
              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Air Quality Dashboard</h1>
              <p className="text-gray-600 dark:text-gray-400">Monitor air quality data across different locations</p>
            </div>
+           
+           
          </div>
         {error && (
           <div className="mt-3 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
@@ -428,11 +435,10 @@ export default function Maps() {
         )}
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-6 bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto">
-          
-                     {/* User Location Card */}
+             {/* Main Content */}
+       <div className="flex-1 p-6 bg-gray-50 dark:bg-gray-900">
+         <div className="max-w-7xl mx-auto">
+           {/* User Location Card */}
            {userLocation && (
              <div className="mb-6 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                <h2 className="text-xl font-semibold text-blue-800 dark:text-blue-200 mb-4">📍 Your Location</h2>
@@ -574,15 +580,17 @@ export default function Maps() {
                         </span>
                       </div>
                       
-                      <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                        {station.source} • {station.lastUpdate}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-                     )}
+                                             <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                         {station.source} • {station.lastUpdate}
+                       </div>
+                       
+                       
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
          </div>
        </div>
      </div>
