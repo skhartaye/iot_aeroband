@@ -1,7 +1,7 @@
 // SUI Coin Rewards Utility
 // This file handles SUI coin rewards for task completion
 
-import { TransactionBlock } from '@mysten/sui.js/transactions';
+import { TransactionBlock } from '@mysten/sui/transactions';
 
 export class SuiRewardManager {
   constructor(suiClient, connectedWallet) {
