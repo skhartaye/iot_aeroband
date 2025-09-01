@@ -1,0 +1,6 @@
+[package]
+name = "Coins"
+version = "0.0.1"
+
+[addresses]
+examples = "0xc03981e1d97a48a4a3416700c129e0adbe14b68d55092951174aa38f0f9c4120"

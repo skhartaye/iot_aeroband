@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CloudIcon, SunIcon, ArrowTrendingUpIcon, SparklesIcon, FireIcon, MoonIcon, HomeIcon, ChartBarIcon, BeakerIcon, EyeIcon, MapIcon, WalletIcon } from '@heroicons/react/24/solid';
+import { CloudIcon, SunIcon, ArrowTrendingUpIcon, SparklesIcon, FireIcon, MoonIcon, HomeIcon, ChartBarIcon, BeakerIcon, EyeIcon, MapIcon, WalletIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/solid';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,6 +11,7 @@ import {
   Filler,
 } from 'chart.js';
 import Maps from './Maps.jsx';
+import Tasks from './Tasks.jsx';
 import { useSuiWallet } from './hooks/useSuiWallet.js';
 import './App.css';
 
@@ -46,11 +47,11 @@ function App() {
   const [deviceName, setDeviceName] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [theme, setTheme] = useState('light');
-  const [viewMode, setViewMode] = useState('home'); // 'home', 'graphs', or 'maps'
+  const [viewMode, setViewMode] = useState('home'); // 'home', 'graphs', 'maps', or 'tasks'
   const [lastUpdate, setLastUpdate] = useState(null);
 
   // Get wallet connection status
-  const { connectedWallet, isWalletConnected, wallets, isInitializing, walletLoadingStates, error: walletError, connectToWallet, disconnectFromWallet, connectionStatus } = useSuiWallet()
+  const { connectedWallet, isWalletConnected, wallets, isInitializing, walletLoadingStates, error: walletError, connectToWallet, disconnectFromWallet, connectionStatus, suiClient } = useSuiWallet()
   const isWalletConnectedStatus = connectedWallet && isWalletConnected(connectedWallet)
 
   // Debug logging
@@ -342,6 +343,19 @@ function App() {
             <span className="text-xs">Maps</span>
           </button>
           
+          {/* Tasks button */}
+          <button
+            className={`hidden md:flex items-center gap-1 px-2 py-1 rounded transition ${
+              viewMode === 'tasks' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+            }`}
+            onClick={() => setViewMode('tasks')}
+          >
+            <ClipboardDocumentListIcon className="h-4 w-4" />
+            <span className="text-xs">Tasks</span>
+          </button>
+          
           {/* Theme toggle - Last */}
           <button
             className="flex items-center gap-1 px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition"
@@ -355,6 +369,8 @@ function App() {
       <main className="w-full flex flex-col items-center flex-1 py-6 px-2">
         {viewMode === 'maps' ? (
           <Maps />
+        ) : viewMode === 'tasks' ? (
+          <Tasks suiClient={suiClient} connectedWallet={connectedWallet} />
         ) : (
           <>
             {error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
@@ -423,6 +439,13 @@ function App() {
         >
           <MapIcon className="h-6 w-6 mb-1" />
           <span className="text-xs">Maps</span>
+        </button>
+        <button
+          className={`flex flex-col items-center justify-center flex-1 py-2 ${viewMode === 'tasks' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
+          onClick={() => setViewMode('tasks')}
+        >
+          <ClipboardDocumentListIcon className="h-6 w-6 mb-1" />
+          <span className="text-xs">Tasks</span>
         </button>
       </nav>
     </div>
