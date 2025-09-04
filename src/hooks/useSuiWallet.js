@@ -2,12 +2,29 @@ import { useState, useEffect, useCallback } from 'react'
 import { useCurrentAccount, useWallets, useSuiClient, useSuiClientContext } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
 import { getWallets, registerWallet } from '@mysten/wallet-standard'
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client'
 
 export const useSuiWallet = () => {
   const currentAccount = useCurrentAccount()
   const { wallets: dappKitWallets } = useWallets()
-  const suiClient = useSuiClient()
+  const dappKitSuiClient = useSuiClient()
   const { network } = useSuiClientContext()
+  
+  // Always use an explicitly configured RPC client for reads
+  const resolvedNetwork = network || 'testnet'
+  const suiRpcUrl = getFullnodeUrl(resolvedNetwork)
+  const suiClient = new SuiClient({ url: suiRpcUrl })
+  
+  // Debug suiClient initialization
+  console.log('useSuiWallet Hook Debug:', {
+    dappKitSuiClient: !!dappKitSuiClient,
+    fallbackSuiClient: !dappKitSuiClient,
+    suiClient: !!suiClient,
+    suiClientType: typeof suiClient,
+    currentAccount: !!currentAccount,
+    network,
+    dappKitWallets: dappKitWallets?.length || 0
+  });
   
   // State for wallet management
   const [userData, setUserData] = useState(null)
@@ -25,6 +42,7 @@ export const useSuiWallet = () => {
   const [walletEvents, setWalletEvents] = useState([])
   const [detectionInProgress, setDetectionInProgress] = useState(false)
   const [connectedWallet, setConnectedWallet] = useState(null)
+  const [connectedAccounts, setConnectedAccounts] = useState([])
   const [connectionStatus, setConnectionStatus] = useState('disconnected') // 'disconnected', 'connecting', 'connected'
   
   // Detect wallets using wallet-standard with proper error handling
@@ -51,6 +69,26 @@ export const useSuiWallet = () => {
       console.log('📱 Wallets detected via wallet-standard:', wallets)
       
       if (wallets && wallets.length > 0) {
+        // Log detailed information about each wallet
+        wallets.forEach(wallet => {
+          console.log(`🔍 Wallet: ${wallet.name}`)
+          console.log(`  - Features:`, Object.keys(wallet.features || {}))
+          console.log(`  - Version:`, wallet.version)
+          console.log(`  - Icon:`, wallet.icon)
+          console.log(`  - Accounts:`, wallet.accounts?.length || 0)
+          
+          // Check for specific features
+          const hasConnect = !!wallet.features['standard:connect']
+          const hasDisconnect = !!wallet.features['standard:disconnect']
+          const hasEvents = !!wallet.features['standard:events']
+          const hasSignTransaction = !!wallet.features['standard:signTransaction']
+          
+          console.log(`  - Has connect: ${hasConnect}`)
+          console.log(`  - Has disconnect: ${hasDisconnect}`)
+          console.log(`  - Has events: ${hasEvents}`)
+          console.log(`  - Has signTransaction: ${hasSignTransaction}`)
+        })
+        
         // Only update if wallets have actually changed
         setAvailableWallets(prev => {
           const prevNames = prev.map(w => w.name).sort().join(',')
@@ -89,6 +127,8 @@ export const useSuiWallet = () => {
             } catch (err) {
               console.error('❌ Error setting up event listener for wallet:', wallet.name, err)
             }
+          } else {
+            console.log(`⚠️ Wallet ${wallet.name} does not support events`)
           }
         })
       } else {
@@ -223,6 +263,17 @@ export const useSuiWallet = () => {
       return () => clearTimeout(timer)
     }
   }, [availableWallets.length, isInitializing, walletDetectionRetries, detectWallets, checkForManualWallets])
+
+  // Provide fallback guidance if no wallet detected (for UI consumers)
+  const noWalletDetected = availableWallets.length === 0 && !isInitializing
+  const walletInstallHint = noWalletDetected ? {
+    message: 'No Sui-compatible wallet detected. Install one to continue.',
+    links: [
+      { name: 'Sui Wallet (Chrome)', url: 'https://chromewebstore.google.com/detail/sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil' },
+      { name: 'Ethos Wallet', url: 'https://chromewebstore.google.com/detail/ethos-wallet/ppbibelpcjmhbdihakflkdcoccbgbkpo' },
+      { name: 'Suiet Wallet', url: 'https://chromewebstore.google.com/detail/suiet/jamgochbbhehijahbfpbkbepjcdojble' }
+    ]
+  } : null
 
   // Debug logging
   useEffect(() => {
@@ -402,15 +453,21 @@ export const useSuiWallet = () => {
             // Even if select fails, we proceed with setting local state
           }
           
-          // Update the wallet object with the new accounts
-          const updatedWallet = {
-            ...wallet,
-            accounts: result.accounts
-          }
+          // Preserve original wallet object; store accounts separately
+          const updatedWallet = wallet
+          setConnectedAccounts(result.accounts || [])
+          
+          console.log('🔧 Setting connectedWallet state with:', {
+            walletName: updatedWallet.name,
+            accountsLength: (result.accounts?.length) || 0,
+            firstAccountAddress: result.accounts?.[0]?.address
+          });
           
           // Update our connection state
           setConnectedWallet(updatedWallet)
           setConnectionStatus('connected')
+          
+          console.log('✅ ConnectedWallet state update triggered');
           
           // Fetch user data after successful connection
           try {
@@ -423,7 +480,60 @@ export const useSuiWallet = () => {
           setConnectionStatus('disconnected')
         }
       } else {
-        throw new Error('Wallet does not support standard:connect')
+        console.log('⚠️ Wallet does not support standard:connect, trying alternative connection methods')
+        
+        // For wallets that don't support standard:connect, we'll rely on dapp-kit
+        // The wallet should already be detected and available through dapp-kit
+        if (currentAccount) {
+          console.log('✅ Found existing connection via dapp-kit:', currentAccount)
+          
+          // Create a wallet object with the current account
+          setConnectedWallet(wallet)
+          setConnectedAccounts([currentAccount])
+          setConnectionStatus('connected')
+          
+          // Fetch user data
+          try {
+            await fetchUserData()
+          } catch (err) {
+            console.log('⚠️ Could not fetch user data yet, wallet may still be connecting...')
+          }
+        } else {
+          console.log('⚠️ No current account found in dapp-kit, wallet may need manual connection')
+          
+          // For some wallets, we need to trigger the connection manually
+          // Try to access the wallet's connect method directly
+          if (wallet.connect && typeof wallet.connect === 'function') {
+            console.log('🔄 Trying wallet.connect() method')
+            try {
+              await wallet.connect()
+              console.log('✅ Wallet.connect() successful')
+              
+              // Wait a moment for the connection to be established
+              await new Promise(resolve => setTimeout(resolve, 500))
+              
+              // Check if we now have a current account
+              if (currentAccount) {
+                setConnectedWallet(wallet)
+                setConnectedAccounts([currentAccount])
+                setConnectionStatus('connected')
+                
+                try {
+                  await fetchUserData()
+                } catch (err) {
+                  console.log('⚠️ Could not fetch user data yet')
+                }
+              } else {
+                throw new Error('Wallet connected but no account available')
+              }
+            } catch (connectErr) {
+              console.error('❌ Error with wallet.connect():', connectErr)
+              throw new Error(`Manual connection failed: ${connectErr.message}`)
+            }
+          } else {
+            throw new Error('Wallet does not support any known connection method. Please connect manually through the wallet extension.')
+          }
+        }
       }
     } catch (err) {
       console.error('❌ Error connecting to wallet:', err)
@@ -432,7 +542,7 @@ export const useSuiWallet = () => {
     } finally {
       setWalletLoadingStates(prev => ({ ...prev, [wallet.name]: false }))
     }
-  }, [fetchUserData])
+  }, [fetchUserData, currentAccount])
 
   // Disconnect wallet - clear all state
   const disconnectWallet = useCallback(() => {
@@ -443,6 +553,7 @@ export const useSuiWallet = () => {
     setError(null)
     setLoading(false)
     setConnectedWallet(null)
+    setConnectedAccounts([])
     setConnectionStatus('disconnected')
     
     // Clear any stored connection data
@@ -653,9 +764,27 @@ export const useSuiWallet = () => {
     })
   }, [availableWallets, suiClient])
 
+  // Monitor connectedWallet state changes
+  useEffect(() => {
+    console.log('🔄 ConnectedWallet state changed:', {
+      connectedWallet: !!connectedWallet,
+      connectedWalletName: connectedWallet?.name,
+      connectedWalletAccounts: connectedAccounts?.length || 0,
+      firstAccountAddress: connectedAccounts?.[0]?.address,
+      connectionStatus
+    });
+  }, [connectedWallet, connectedAccounts, connectionStatus]);
+
   // Check for already connected wallets when wallets are detected
   useEffect(() => {
-    console.log('useEffect [availableWallets, currentAccount, connectedWallet] triggered:', { availableWalletsLength: availableWallets.length, currentAccount: currentAccount?.address, connectedWalletName: connectedWallet?.name })
+    console.log('useEffect [availableWallets, currentAccount, connectedWallet] triggered:', { 
+      availableWalletsLength: availableWallets.length, 
+      currentAccount: currentAccount?.address, 
+      connectedWalletName: connectedWallet?.name,
+      connectedWalletAccounts: connectedWallet?.accounts?.length || 0,
+      availableWalletsWithAccounts: availableWallets.filter(w => w.accounts && w.accounts.length > 0).map(w => ({ name: w.name, accounts: w.accounts.length }))
+    });
+    
     if (availableWallets.length > 0 && currentAccount && !connectedWallet) {
       // Try to find the wallet that matches the currentAccount
       const matchingWallet = availableWallets.find(wallet => 
@@ -704,7 +833,9 @@ export const useSuiWallet = () => {
     walletDetectionRetries,
     walletEvents,
     connectedWallet,
+    connectedAccounts,
     connectionStatus,
+    suiClient,
     connectToWallet,
     disconnectWallet,
     disconnectFromWallet,
@@ -712,6 +843,8 @@ export const useSuiWallet = () => {
     refreshBalance,
     saveUserData,
     setError,
-    isWalletConnected
+    isWalletConnected,
+    noWalletDetected,
+    walletInstallHint
   }
 }

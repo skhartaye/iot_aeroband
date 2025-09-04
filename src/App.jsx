@@ -51,7 +51,7 @@ function App() {
   const [lastUpdate, setLastUpdate] = useState(null);
 
   // Get wallet connection status
-  const { connectedWallet, isWalletConnected, wallets, isInitializing, walletLoadingStates, error: walletError, connectToWallet, disconnectFromWallet, connectionStatus, suiClient } = useSuiWallet()
+  const { connectedWallet, connectedAccounts, isWalletConnected, wallets, isInitializing, walletLoadingStates, error: walletError, connectToWallet, disconnectFromWallet, connectionStatus, suiClient, noWalletDetected, walletInstallHint, currentAccount } = useSuiWallet()
   const isWalletConnectedStatus = connectedWallet && isWalletConnected(connectedWallet)
 
   // Debug logging
@@ -59,7 +59,12 @@ function App() {
     connectedWallet,
     isWalletConnected,
     isWalletConnectedStatus,
-    hasAccounts: connectedWallet?.accounts?.length > 0
+    hasAccounts: connectedWallet?.accounts?.length > 0,
+    suiClient: !!suiClient,
+    suiClientType: typeof suiClient,
+    connectionStatus,
+    connectedWalletAccounts: connectedWallet?.accounts?.length || 0,
+    connectedWalletName: connectedWallet?.name
   })
 
   // Theme toggle effect
@@ -253,7 +258,7 @@ function App() {
   ];
 
   return (
-    <div className={`w-screen min-h-screen flex flex-col items-center bg-gradient-to-br from-blue-50 via-white to-purple-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-500 pb-16 md:pb-0`}>
+    <div className={`w-screen min-h-screen flex flex-col items-center bg-gradient-to-br from-blue-50 via-white to-purple-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-500 pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-0`}>
       {/* Nav Bar */}
       <nav className="w-full flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-gray-900/80 shadow-sm border-b border-gray-100 dark:border-gray-800">
         <span className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">Aeroband</span>
@@ -370,7 +375,16 @@ function App() {
         {viewMode === 'maps' ? (
           <Maps />
         ) : viewMode === 'tasks' ? (
-          <Tasks suiClient={suiClient} connectedWallet={connectedWallet} />
+          <Tasks 
+            suiClient={suiClient} 
+            connectedWallet={connectedWallet}
+            wallets={wallets}
+            connectToWallet={connectToWallet}
+            noWalletDetected={noWalletDetected}
+            walletInstallHint={walletInstallHint}
+            currentAccount={currentAccount}
+            connectedAccounts={connectedAccounts}
+          />
         ) : (
           <>
             {error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
@@ -418,7 +432,7 @@ function App() {
         )}
       </main>
       {/* Bottom nav for mobile */}
-      <nav className="fixed bottom-0 left-0 w-full flex md:hidden justify-around items-center bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-700 z-50 h-14">
+      <nav className="fixed bottom-0 left-0 w-full flex md:hidden justify-around items-center bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-700 z-50 h-16 pb-[env(safe-area-inset-bottom,0px)]">
         <button
           className={`flex flex-col items-center justify-center flex-1 py-2 ${viewMode === 'home' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
           onClick={() => setViewMode('home')}
@@ -457,15 +471,15 @@ function WalletConnection({
   connectedWallet, 
   isWalletConnected, 
   isWalletConnectedStatus, 
-  wallets, 
-  isInitializing,
-  walletLoadingStates,
+    wallets,
+    isInitializing,
+    walletLoadingStates,
   error: walletError,
-  connectToWallet,
-  disconnectFromWallet,
-  connectionStatus
+    connectToWallet,
+    disconnectFromWallet,
+    connectionStatus
 }) {
-  
+
   const [showDropdown, setShowDropdown] = useState(false)
   const [forceRefresh, setForceRefresh] = useState(0)
 
