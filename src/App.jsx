@@ -248,8 +248,6 @@ function App() {
   const cards = [
     { key: 'temperature', label: 'Temperature', value: data.temperature, unit: '°C', icon: SunIcon, color: 'from-red-200 to-red-100' },
     { key: 'humidity', label: 'Humidity', value: data.humidity, unit: '%', icon: CloudIcon, color: 'from-blue-200 to-blue-100' },
-    { key: 'pressure', label: 'Pressure', value: data.pressure, unit: 'hPa', icon: ArrowTrendingUpIcon, color: 'from-green-200 to-green-100' },
-    { key: 'gas_resistance', label: 'Gas Resistance', value: data.gas_resistance, unit: 'kΩ', icon: FireIcon, color: 'from-orange-200 to-orange-100' },
     { key: 'co', label: 'CO', value: data.co, unit: 'ppm', icon: BeakerIcon, color: 'from-purple-200 to-purple-100' },
     { key: 'nh3', label: 'NH3', value: data.nh3, unit: 'ppm', icon: EyeIcon, color: 'from-indigo-200 to-indigo-100' },
     { key: 'no2', label: 'NO2', value: data.no2, unit: 'ppm', icon: SparklesIcon, color: 'from-pink-200 to-pink-100' },
@@ -400,8 +398,8 @@ function App() {
                 <p className="text-gray-400 dark:text-gray-500 text-xs">Updated in real time from your BLE device</p>
               </div>
               <div className="w-full">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
-                  {cards.slice(0, 4).map((card, idx) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4 max-w-6xl mx-auto">
+                  {cards.slice(0, 3).map((card, idx) => (
                     <DataCard
                       key={card.label}
                       label={card.label}
@@ -413,8 +411,8 @@ function App() {
                     />
                   ))}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 max-w-6xl mx-auto mt-4">
-                  {cards.slice(4).map((card, idx) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 max-w-6xl mx-auto mt-4">
+                  {cards.slice(3).map((card, idx) => (
                     <DataCard
                       key={card.label}
                       label={card.label}
