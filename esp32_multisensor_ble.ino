@@ -1,221 +1,184 @@
-/*
- * ESP32 MultiSensor BLE
- * 
- * IMPORTANT: If you get compilation errors about BLE library conflicts,
- * temporarily rename or move the ArduinoBLE library folder from:
- * C:\Users\skhart\Documents\Arduino\libraries\ArduinoBLE
- * to something like ArduinoBLE_backup
- * 
- * This will force the Arduino IDE to use only the ESP32's native BLE library.
- */
-
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BME680.h>
-#include <Wire.h>
-
-// Explicitly use ESP32 BLE library
+#include "Adafruit_BME680.h"
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-// BLE Service and Characteristic UUIDs
-#define SERVICE_UUID        "19b10000-e8f2-537e-4f6c-d104768a1214"
-#define CHARACTERISTIC_UUID "19b10000-e8f2-537e-4f6c-d104768a1214"
+// BLE UUIDs
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-// LED pins (optional, for status)
-#define CONNECTION_LED 2  // Built-in LED
-#define DATA_LED 4        // External LED for data transmission indication
+// MiCS-5524 analog pin setup
+const int coPin   = 34;
+const int nh3Pin  = 35;
+const int no2Pin  = 32;
 
-// MQ-137 setup (Ammonia Sensor)
-const int mq137AnalogPin = 34;  // GPIO 34 = Analog input
-const float RL = 10.0;          // Load resistance in kOhms
-const float R0 = 20.0;          // Sensor resistance in clean air (calibrate this value)
-const float a = 102.2;          // NH3 curve parameter
-const float b = -2.473;         // NH3 curve slope
+const float RL = 10.0; // Load resistor in kΩ
+const float R0_CO   = 10.0; // Replace with calibrated value
+const float R0_NH3  = 10.0;
+const float R0_NO2  = 10.0;
 
-// BME680 SPI setup
-#define BME_CS 5 // Chip Select for BME680
-Adafruit_BME680 bme(BME_CS); // Uses default SPI pins for MOSI, MISO, SCK
+// Placeholder curve constants for each gas (tweak for real accuracy)
+const float a_CO   = 100.0, b_CO   = -1.5;
+const float a_NH3  = 100.0, b_NH3  = -1.5;
+const float a_NO2  = 100.0, b_NO2  = -1.5;
 
-// PMS7003 UART pins
+// BME680 setup
+#define BME_CS 5
+Adafruit_BME680 bme(BME_CS);
+
+// PMS7003 UART
 #define PMS7003_RX 16
 #define PMS7003_TX 17
-HardwareSerial pmsSerial(1); // UART1 for PMS7003
+HardwareSerial pmsSerial(1);
 
-// BLE variables
+// BLE
 BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
 bool deviceConnected = false;
-bool oldDeviceConnected = false; // To detect changes in connection state
+bool oldDeviceConnected = false;
 
 class MyServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServerInstance) {
-        deviceConnected = true;
-        digitalWrite(CONNECTION_LED, HIGH);
-        Serial.println("[BLE] Client connected");
-        Serial.println("[BLE] Device is advertising as: ESP32-MultiSensor");
-        Serial.println("[BLE] Waiting for data transmission...");
-        Serial.println("[BLE] Note: Cannot retrieve client (phone) address using Arduino BLE library.");
-    };
-
-    void onDisconnect(BLEServer* pServerInstance) {
-        deviceConnected = false;
-        digitalWrite(CONNECTION_LED, LOW);
-        Serial.println("[BLE] Client disconnected");
-        Serial.println("[BLE] Restarting advertising...");
-    }
+  void onConnect(BLEServer* pServerInstance) {
+    deviceConnected = true;
+    Serial.println("[BLE] ✅ Client connected successfully!");
+  }
+  void onDisconnect(BLEServer* pServerInstance) {
+    deviceConnected = false;
+    Serial.println("[BLE] ❌ Client disconnected - restarting advertising...");
+  }
 };
 
 void setup() {
-    Serial.begin(115200);
-    delay(1000);
+  Serial.begin(115200);
+  delay(1000);
 
-    pinMode(CONNECTION_LED, OUTPUT);
-    pinMode(DATA_LED, OUTPUT);
-    digitalWrite(CONNECTION_LED, LOW);
-    digitalWrite(DATA_LED, LOW);
+  analogReadResolution(10); // ESP32 ADC = 0–1023
 
-    Serial.println("[SYSTEM] Booting ESP32 MultiSensor BLE...");
-    
-    // Initialize MQ-137 (No specific init needed for analog read)
-    analogReadResolution(10); // Set ADC resolution (10-bit for 0-1023)
+  // BME680 - Optimized for faster readings
+  Serial.println("[BME680] Initializing...");
+  if (!bme.begin()) {
+    Serial.println("[BME680] Could not find BME680!");
+    while (1);
+  }
+  
+  // Faster BME680 settings
+  bme.setTemperatureOversampling(BME680_OS_2X);  // Reduced from 8X
+  bme.setHumidityOversampling(BME680_OS_1X);     // Reduced from 2X
+  bme.setPressureOversampling(BME680_OS_2X);     // Reduced from 4X
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_0);    // No filtering for speed
+  bme.setGasHeater(320, 100); // Reduced heating time from 150ms to 100ms
+  
+  Serial.println("[BME680] Initialized successfully");
 
-    // Initialize BME680
-    if (!bme.begin()) {
-        Serial.println("Could not find a valid BME680 sensor, check wiring!");
-        while (1); // Halt
-    }
-    bme.setTemperatureOversampling(BME680_OS_8X);
-    bme.setHumidityOversampling(BME680_OS_2X);
-    bme.setPressureOversampling(BME680_OS_4X);
-    bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-    bme.setGasHeater(320, 150); // 320*C for 150ms
+  // PMS7003
+  pmsSerial.begin(9600, SERIAL_8N1, PMS7003_RX, PMS7003_TX);
 
-    // Initialize PMS7003
-    pmsSerial.begin(9600, SERIAL_8N1, PMS7003_RX, PMS7003_TX);
+  // BLE - Optimized for faster connection
+  BLEDevice::init("ESP32-MultiSensor");
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
 
-    // Initialize BLE
-    BLEDevice::init("ESP32-MultiSensor");
-    pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new MyServerCallbacks());
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pCharacteristic = pService->createCharacteristic(
+    CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pCharacteristic->addDescriptor(new BLE2902());
 
-    BLEService *pService = pServer->createService(SERVICE_UUID);
-    pCharacteristic = pService->createCharacteristic(
-                        CHARACTERISTIC_UUID,
-                        BLECharacteristic::PROPERTY_READ |
-                        BLECharacteristic::PROPERTY_NOTIFY
-                      );
-    pCharacteristic->addDescriptor(new BLE2902());
+  pService->start();
+  
+  // Optimized advertising parameters for faster discovery
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);  // 7.5ms
+  pAdvertising->setMaxPreferred(0x06);  // 7.5ms - faster advertising
+  pAdvertising->setMinInterval(0x20);   // 20ms
+  pAdvertising->setMaxInterval(0x40);   // 40ms
+  
+  Serial.println("[BLE] Starting optimized advertising...");
+  BLEDevice::startAdvertising();
+  Serial.println("[BLE] Ready to connect!");
+}
 
-    pService->start();
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->addServiceUUID(SERVICE_UUID);
-    pAdvertising->setScanResponse(true);
-    pAdvertising->setMinPreferred(0x06);
-    pAdvertising->setMinPreferred(0x12);
-    BLEDevice::startAdvertising();
-    Serial.println("[BLE] BLE device initialized and advertising");
+float computePPM(int adc, float R0, float a, float b) {
+  float voltage = adc * (3.3 / 1023.0);
+  if (voltage == 0) return 0.0;
+  float Rs = ((3.3 * RL) / voltage) - RL;
+  float ratio = Rs / R0;
+  float ppm = a * pow(ratio, b);
+  if (ppm < 0 || isnan(ppm) || isinf(ppm)) return 0.0;
+  return ppm;
 }
 
 void loop() {
-    if (deviceConnected) {
-        digitalWrite(DATA_LED, HIGH);
-        
-        // Read sensor data with new format
-        float temp = 22.5 + random(-25, 25) / 10.0;
-        float hum = 40.0 + random(-20, 20) / 10.0;
-        float pressure = 1005.0 + random(-50, 50) / 10.0;  // hPa
-        float gas_resistance = 30.0 + random(-10, 10) / 10.0;  // kΩ
-        int pm1 = random(0, 30);
-        int pm25 = random(5, 60);
-        int pm10 = random(10, 80);
-        float nh3 = simulateNH3();
+  if (deviceConnected) {
+    // MiCS-5524
+    int adcCO = analogRead(coPin);
+    int adcNH3 = analogRead(nh3Pin);
+    int adcNO2 = analogRead(no2Pin);
+    float coPPM = computePPM(adcCO, R0_CO, a_CO, b_CO);
+    float nh3PPM = computePPM(adcNH3, R0_NH3, a_NH3, b_NH3);
+    float no2PPM = computePPM(adcNO2, R0_NO2, a_NO2, b_NO2);
 
-        // Store previous values for change calculation
-        static float prev_temp = 0, prev_hum = 0, prev_pressure = 0, prev_gas_resistance = 0, prev_nh3 = 0;
-        static int prev_pm1 = 0, prev_pm25 = 0, prev_pm10 = 0;
-        
-        // Calculate changes
-        float temp_change = temp - prev_temp;
-        float humidity_change = hum - prev_hum;
-        float pressure_change = pressure - prev_pressure;
-        float gas_change = gas_resistance - prev_gas_resistance;
-        float ammonia_change = nh3 - prev_nh3;
-        int pm1_change = pm1 - prev_pm1;
-        int pm25_change = pm25 - prev_pm25;
-        int pm10_change = pm10 - prev_pm10;
-        
-        // Calculate percentage changes (avoid division by zero)
-        float temp_pct = (prev_temp != 0) ? (temp_change / prev_temp) * 100 : 0;
-        float humidity_pct = (prev_hum != 0) ? (humidity_change / prev_hum) * 100 : 0;
-        float pressure_pct = (prev_pressure != 0) ? (pressure_change / prev_pressure) * 100 : 0;
-        float gas_pct = (prev_gas_resistance != 0) ? (gas_change / prev_gas_resistance) * 100 : 0;
-        float ammonia_pct = (prev_nh3 != 0) ? (ammonia_change / prev_nh3) * 100 : 0;
-        float pm1_pct = (prev_pm1 != 0) ? (pm1_change / (float)prev_pm1) * 100 : 0;
-        float pm25_pct = (prev_pm25 != 0) ? (pm25_change / (float)prev_pm25) * 100 : 0;
-        float pm10_pct = (prev_pm10 != 0) ? (pm10_change / (float)prev_pm10) * 100 : 0;
-        
-        // Determine status based on values
-        const char* temp_status = (temp >= 20 && temp <= 30) ? "Normal" : "Warning";
-        const char* humidity_status = (hum >= 40 && hum <= 70) ? "Normal" : "Warning";
-        const char* pressure_status = (pressure >= 1000 && pressure <= 1020) ? "Normal" : "Warning";
-        const char* gas_status = (gas_resistance >= 10 && gas_resistance <= 50) ? "Normal" : "Warning";
-        const char* ammonia_status = (nh3 <= 1.0) ? "Normal" : "Warning";
-        const char* pm1_status = (pm1 <= 50) ? "Normal" : "Warning";
-        const char* pm25_status = (pm25 <= 35) ? "Normal" : "Warning";
-        const char* pm10_status = (pm10 <= 150) ? "Normal" : "Warning";
-        
-        // Construct enhanced JSON payload
-        char jsonData[800]; 
-        snprintf(jsonData, sizeof(jsonData),
-                 "{\"temperature\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
-                 "\"humidity\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
-                 "\"pressure\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
-                 "\"gas_resistance\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
-                 "\"ammonia\":{\"value\":%.2f,\"status\":\"%s\",\"change\":%.1f,\"change_pct\":%.1f},"
-                 "\"pm1\":{\"value\":%d,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f},"
-                 "\"pm25\":{\"value\":%d,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f},"
-                 "\"pm10\":{\"value\":%d,\"status\":\"%s\",\"change\":%d,\"change_pct\":%.1f}}",
-                 temp, temp_status, temp_change, temp_pct,
-                 hum, humidity_status, humidity_change, humidity_pct,
-                 pressure, pressure_status, pressure_change, pressure_pct,
-                 gas_resistance, gas_status, gas_change, gas_pct,
-                 nh3, ammonia_status, ammonia_change, ammonia_pct,
-                 pm1, pm1_status, pm1_change, pm1_pct,
-                 pm25, pm25_status, pm25_change, pm25_pct,
-                 pm10, pm10_status, pm10_change, pm10_pct);
-        
-        // Update previous values for next iteration
-        prev_temp = temp;
-        prev_hum = hum;
-        prev_pressure = pressure;
-        prev_gas_resistance = gas_resistance;
-        prev_nh3 = nh3;
-        prev_pm1 = pm1;
-        prev_pm25 = pm25;
-        prev_pm10 = pm10;
-        
-        Serial.print("[BLE] Sending data to connected device: ");
-        Serial.println(jsonData);  // Your JSON data
-        
-        pCharacteristic->setValue(jsonData);
-        pCharacteristic->notify();
-        digitalWrite(DATA_LED, LOW);
-        Serial.println("[BLE] Data sent and DATA_LED toggled");
+    // BME680
+    float temp = NAN, humid = NAN, press = NAN, gas = NAN;
+    if (bme.performReading()) {
+      temp = bme.temperature;
+      humid = bme.humidity;
+      press = bme.pressure / 100.0;
+      gas = bme.gas_resistance / 1000.0;
     }
 
-    if (!deviceConnected && oldDeviceConnected) {
-        delay(500);
-        BLEDevice::startAdvertising();
-        Serial.println("[BLE] Advertising restarted after disconnect");
-        oldDeviceConnected = deviceConnected;
+    // PMS7003
+    unsigned int pm1_0 = 0, pm2_5 = 0, pm10 = 0;
+    byte buf[32];
+    int count = 0;
+    unsigned long start = millis();
+    while (pmsSerial.available() && millis() - start < 1000) {
+      if (count < 32) buf[count++] = pmsSerial.read();
+      else pmsSerial.read();
     }
-    if (deviceConnected && !oldDeviceConnected) {
-        Serial.println("[BLE] Device reconnected");
-        oldDeviceConnected = deviceConnected;
+    if (count == 32 && buf[0] == 0x42 && buf[1] == 0x4D) {
+      pm1_0 = (buf[10] << 8) | buf[11];
+      pm2_5 = (buf[12] << 8) | buf[13];
+      pm10  = (buf[14] << 8) | buf[15];
     }
-    
-    delay(5000);
-} 
+
+    // JSON BLE Payload
+    char jsonData[400];
+    snprintf(jsonData, sizeof(jsonData),
+      "{\"temperature\":%.2f,\"humidity\":%.2f,\"pressure\":%.2f,\"gas_resistance\":%.2f,"
+      "\"co\":%.2f,\"nh3\":%.2f,\"no2\":%.2f,\"pm1_0\":%u,\"pm2_5\":%u,\"pm10\":%u}",
+      isnan(temp) ? 0.0 : temp,
+      isnan(humid) ? 0.0 : humid,
+      isnan(press) ? 0.0 : press,
+      isnan(gas) ? 0.0 : gas,
+      coPPM, nh3PPM, no2PPM,
+      pm1_0, pm2_5, pm10
+    );
+
+    Serial.println("[BLE] Sending:");
+    Serial.println(jsonData);
+    pCharacteristic->setValue(jsonData);
+    pCharacteristic->notify();
+  }
+
+  if (!deviceConnected && oldDeviceConnected) {
+    delay(500);
+    BLEDevice::startAdvertising();
+    oldDeviceConnected = deviceConnected;
+  }
+
+  if (deviceConnected && !oldDeviceConnected) {
+    oldDeviceConnected = deviceConnected;
+  }
+
+  delay(2000); // Reduced delay for faster response
+}
+
+
+
